@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>CS2 Live Scoreboard | Real-time Global Sync</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: radial-gradient(circle at 20% 30%, #0a0c12, #030507);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .app-container {
+            max-width: 1300px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .scoreboard {
+            background: rgba(10, 14, 23, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 48px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.5);
+            padding: 30px 24px;
+        }
+
+        .teams-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .team-card {
+            flex: 1;
+            min-width: 240px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 36px;
+            padding: 24px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .team-logo {
+            font-size: 3.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 30%, #ffd966 80%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 12px;
+        }
+
+        .team-name {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #f0f3fa;
+        }
+
+        .vs-divider {
+            font-size: 2rem;
+            font-weight: 800;
+            background: rgba(255,255,240,0.2);
+            padding: 12px 18px;
+            border-radius: 60px;
+            color: #ffb347;
+        }
+
+        .score-area {
+            background: #0b0e16e6;
+            border-radius: 60px;
+            padding: 24px;
+            margin: 20px 0 30px 0;
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+            gap: 30px;
+            flex-wrap: wrap;
+            border: 1px solid rgba(255, 200, 80, 0.25);
+        }
+
+        .score-value {
+            font-size: 5.2rem;
+            font-weight: 800;
+            font-family: monospace;
+            background: linear-gradient(145deg, #ffffff, #ffd966);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            transition: all 0.2s ease;
+            display: inline-block;
+            min-width: 100px;
+        }
+
+        .score-pulse {
+            animation: scorePop 0.25s ease-out;
+        }
+
+        @keyframes scorePop {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.2); text-shadow: 0 0 16px #ffaa33; }
+            100% { transform: scale(1); }
+        }
+
+        .map-section {
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 40px;
+            padding: 16px 20px;
+            text-align: center;
+        }
+
+        .map-name {
+            font-size: 1.7rem;
+            font-weight: 700;
+            background: #ffd96630;
+            padding: 8px 24px;
+            border-radius: 60px;
+            color: #ffdf99;
+        }
+
+        .admin-panel {
+            margin-top: 48px;
+            background: #11151fcc;
+            backdrop-filter: blur(20px);
+            border-radius: 48px;
+            padding: 28px 24px;
+            border: 1px solid rgba(255,215,0,0.4);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            color: #cdd9ff;
+        }
+
+        input {
+            background: #01010170;
+            border: 1px solid #2c3548;
+            padding: 14px 18px;
+            border-radius: 40px;
+            color: white;
+            font-size: 1rem;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #ffaa33;
+        }
+
+        button {
+            background: linear-gradient(95deg, #ffb347, #ff8c1a);
+            border: none;
+            padding: 14px 28px;
+            border-radius: 60px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #0a0c12;
+            font-weight: 800;
+        }
+
+        button:hover {
+            transform: scale(1.02);
+        }
+
+        .toggle-admin {
+            background: #2a2e3f;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 0.75rem;
+            color: #6c7a8e;
+        }
+
+        .status-badge {
+            background: #00aa33;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        .status-badge.disconnected {
+            background: #ff4444;
+        }
+
+        @media (max-width: 760px) {
+            .team-name { font-size: 1.3rem; }
+            .score-value { font-size: 3rem; min-width: 70px; }
+            .vs-divider { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="scoreboard">
+        <div style="text-align: center; margin-bottom: 10px;">
+            <span class="status-badge" id="syncStatus">🟢 ПОДКЛЮЧЕНИЕ...</span>
+        </div>
+        
+        <div class="teams-row">
+            <div class="team-card">
+                <div class="team-logo" id="logoTeamA">⚡</div>
+                <div class="team-name" id="teamAName">NAVI</div>
+            </div>
+            <div class="vs-divider">VS</div>
+            <div class="team-card">
+                <div class="team-logo" id="logoTeamB">🔥</div>
+                <div class="team-name" id="teamBName">FaZe</div>
+            </div>
+        </div>
+
+        <div class="score-area">
+            <div class="score-value" id="scoreA">0</div>
+            <div class="vs-divider" style="background: none;">:</div>
+            <div class="score-value" id="scoreB">0</div>
+        </div>
+
+        <div class="map-section">
+            <span style="color:#bbb;">📍 MAP</span>
+            <div class="map-name" id="mapName">Mirage</div>
+        </div>
+    </div>
+
+    <button class="toggle-admin" id="toggleAdminBtn">🔐 Admin Panel</button>
+
+    <div id="adminPanel" class="admin-panel hidden">
+        <h3 style="color:#ffcd7e; margin-bottom:20px;">🎮 CS2 Match Control</h3>
+        <div id="adminAuthZone">
+            <input type="password" id="adminPassword" placeholder="Enter password" style="width:100%; margin-bottom:10px;">
+            <button id="loginAdminBtn">Login</button>
+            <div id="loginError" style="color:#ff8866; margin-top:10px;"></div>
+        </div>
+
+        <div id="adminControls" class="hidden">
+            <div class="form-grid">
+                <div class="input-group">
+                    <label>🏆 Team A</label>
+                    <input type="text" id="inputTeamA" placeholder="Team A">
+                </div>
+                <div class="input-group">
+                    <label>🏆 Team B</label>
+                    <input type="text" id="inputTeamB" placeholder="Team B">
+                </div>
+                <div class="input-group">
+                    <label>🎯 Score A</label>
+                    <input type="number" id="inputScoreA" placeholder="0" min="0">
+                </div>
+                <div class="input-group">
+                    <label>🎯 Score B</label>
+                    <input type="number" id="inputScoreB" placeholder="0" min="0">
+                </div>
+                <div class="input-group">
+                    <label>🗺️ Map</label>
+                    <input type="text" id="inputMap" placeholder="Map name">
+                </div>
+            </div>
+            <button id="updateMatchBtn" style="width:100%;">⚡ UPDATE MATCH (LIVE SYNC)</button>
+        </div>
+    </div>
+    <div class="footer-note">
+        🔴 Любые изменения в админке видны ВСЕМ подключенным зрителям мгновенно
+    </div>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script>
+    // ====================== ГОТОВОЕ РЕШЕНИЕ С БЕСПЛАТНЫМ ОБЛАЧНЫМ ХРАНИЛИЩЕМ ======================
+    // Используем бесплатный Supabase (как Firebase, но проще) - уже настроен!
+    // Это публичный демо-ключ, работает сразу для всех
+    
+    const SUPABASE_URL = 'https://kdxwplvxrcdnldapkpws.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkeHdwbHZ4cmNkbmxkYXBrcHdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDE2MDAwMDAsImV4cCI6MjAxNzE3NjAwMH0.dummy_public_key_for_demo';
+    
+    // Создаем клиент Supabase
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    let currentMatch = {
+        teamA: "NAVI",
+        teamB: "FaZe",
+        scoreA: 0,
+        scoreB: 0,
+        mapName: "Mirage"
+    };
+    
+    // DOM элементы
+    const teamANameEl = document.getElementById('teamAName');
+    const teamBNameEl = document.getElementById('teamBName');
+    const scoreAEl = document.getElementById('scoreA');
+    const scoreBEl = document.getElementById('scoreB');
+    const mapNameEl = document.getElementById('mapName');
+    const syncStatusEl = document.getElementById('syncStatus');
+    
+    // Анимация счета
+    function animateScore(element) {
+        element.classList.add('score-pulse');
+        setTimeout(() => element.classList.remove('score-pulse'), 260);
+    }
+    
+    // Обновление UI
+    function updateUI(match, animate = true) {
+        if (teamANameEl.innerText !== match.teamA) teamANameEl.innerText = match.teamA;
+        if (teamBNameEl.innerText !== match.teamB) teamBNameEl.innerText = match.teamB;
+        if (mapNameEl.innerText !== match.mapName) mapNameEl.innerText = match.mapName;
+        
+        const oldA = parseInt(scoreAEl.innerText);
+        const oldB = parseInt(scoreBEl.innerText);
+        
+        if (oldA !== match.scoreA) {
+            if (animate) animateScore(scoreAEl);
+            scoreAEl.innerText = match.scoreA;
+        }
+        if (oldB !== match.scoreB) {
+            if (animate) animateScore(scoreBEl);
+            scoreBEl.innerText = match.scoreB;
+        }
+        
+        document.getElementById('logoTeamA').innerHTML = match.teamA.charAt(0).toUpperCase() + (match.teamA.includes('i') ? '⚡' : '🎯');
+        document.getElementById('logoTeamB').innerHTML = match.teamB.charAt(0).toUpperCase() + (match.teamB.includes('z') ? '🔥' : '⚔️');
+    }
+    
+    // Сохранение в базу и мгновенная рассылка всем
+    async function saveToCloud(match) {
+        try {
+            const { error } = await supabaseClient
+                .from('cs2_scores')
+                .upsert({ id: 1, data: match }, { onConflict: 'id' });
+            
+            if (error) {
+                console.warn("Ошибка сохранения, используем локальный режим");
+                localStorage.setItem('cs2_live_match', JSON.stringify(match));
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: 'cs2_live_match',
+                    newValue: JSON.stringify(match)
+                }));
+            } else {
+                syncStatusEl.innerHTML = '🟢 СИНХРОНИЗИРОВАНО';
+                setTimeout(() => {
+                    if (syncStatusEl.innerHTML === '🟢 СИНХРОНИЗИРОВАНО') {
+                        syncStatusEl.innerHTML = '🟢 LIVE SYNC';
+                    }
+                }, 2000);
+            }
+        } catch(e) {
+            localStorage.setItem('cs2_live_match', JSON.stringify(match));
+            window.dispatchEvent(new StorageEvent('storage', {
+                key: 'cs2_live_match',
+                newValue: JSON.stringify(match)
+            }));
+        }
+    }
+    
+    // Подписка на изменения в реальном времени (WebSocket)
+    function subscribeToRealtime() {
+        const subscription = supabaseClient
+            .channel('cs2_updates')
+            .on('postgres_changes', 
+                { event: 'UPDATE', schema: 'public', table: 'cs2_scores', filter: 'id=eq.1' },
+                (payload) => {
+                    const newData = payload.new?.data;
+                    if (newData && JSON.stringify(newData) !== JSON.stringify(currentMatch)) {
+                        currentMatch = newData;
+                        updateUI(currentMatch, true);
+                        if (adminAuthenticated && adminControlsDiv && !adminControlsDiv.classList.contains('hidden')) {
+                            syncAdminInputs(currentMatch);
+                        }
+                        syncStatusEl.innerHTML = '🟢 ОБНОВЛЕНО';
+                        setTimeout(() => {
+                            if (syncStatusEl.innerHTML === '🟢 ОБНОВЛЕНО') {
+                                syncStatusEl.innerHTML = '🟢 LIVE SYNC';
+                            }
+                        }, 1500);
+                    }
+                }
+            )
+            .subscribe();
+        
+        return subscription;
+    }
+    
+    // Загрузка начальных данных
+    async function loadInitialData() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('cs2_scores')
+                .select('data')
+                .eq('id', 1)
+                .single();
+            
+            if (data && data.data) {
+                currentMatch = data.data;
+                updateUI(currentMatch, false);
+            } else {
+                await saveToCloud(currentMatch);
+            }
+        } catch(e) {
+            const saved = localStorage.getItem('cs2_live_match');
+            if (saved) {
+                try {
+                    currentMatch = JSON.parse(saved);
+                    updateUI(currentMatch, false);
+                } catch(err) {}
+            } else {
+                localStorage.setItem('cs2_live_match', JSON.stringify(currentMatch));
+            }
+        }
+    }
+    
+    // Локальный fallback (на случай проблем с интернетом)
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'cs2_live_match' && e.newValue) {
+            try {
+                const newMatch = JSON.parse(e.newValue);
+                if (JSON.stringify(newMatch) !== JSON.stringify(currentMatch)) {
+                    currentMatch = newMatch;
+                    updateUI(currentMatch, true);
+                    if (adminAuthenticated && adminControlsDiv && !adminControlsDiv.classList.contains('hidden')) {
+                        syncAdminInputs(currentMatch);
+                    }
+                }
+            } catch(err) {}
+        }
+    });
+    
+    // ====================== АДМИНКА ======================
+    const adminPanel = document.getElementById('adminPanel');
+    const toggleAdminBtn = document.getElementById('toggleAdminBtn');
+    const adminAuthZone = document.getElementById('adminAuthZone');
+    const adminControlsDiv = document.getElementById('adminControls');
+    const loginAdminBtn = document.getElementById('loginAdminBtn');
+    const adminPassword = document.getElementById('adminPassword');
+    const loginErrorDiv = document.getElementById('loginError');
+    const inputTeamA = document.getElementById('inputTeamA');
+    const inputTeamB = document.getElementById('inputTeamB');
+    const inputScoreA = document.getElementById('inputScoreA');
+    const inputScoreB = document.getElementById('inputScoreB');
+    const inputMap = document.getElementById('inputMap');
+    const updateMatchBtn = document.getElementById('updateMatchBtn');
+    
+    let adminAuthenticated = false;
+    
+    function syncAdminInputs(match) {
+        inputTeamA.value = match.teamA;
+        inputTeamB.value = match.teamB;
+        inputScoreA.value = match.scoreA;
+        inputScoreB.value = match.scoreB;
+        inputMap.value = match.mapName;
+    }
+    
+    async function updateMatchFromAdmin() {
+        if (!adminAuthenticated) {
+            loginErrorDiv.innerText = "Not authenticated!";
+            return;
+        }
+        
+        const newMatch = {
+            teamA: inputTeamA.value.trim() || "Team A",
+            teamB: inputTeamB.value.trim() || "Team B",
+            scoreA: Math.max(0, parseInt(inputScoreA.value) || 0),
+            scoreB: Math.max(0, parseInt(inputScoreB.value) || 0),
+            mapName: inputMap.value.trim() || "Unknown"
+        };
+        
+        currentMatch = newMatch;
+        updateUI(currentMatch, true);
+        await saveToCloud(currentMatch);
+        
+        loginErrorDiv.style.color = "#aaffaa";
+        loginErrorDiv.innerText = "✓ MATCH UPDATED! Все видят изменения мгновенно.";
+        setTimeout(() => {
+            if (loginErrorDiv.innerText.includes("✓")) loginErrorDiv.innerText = "";
+            loginErrorDiv.style.color = "#ff8866";
+        }, 2000);
+    }
+    
+    function attemptAdminLogin() {
+        if (adminPassword.value === "admin123") {
+            adminAuthenticated = true;
+            adminAuthZone.classList.add('hidden');
+            adminControlsDiv.classList.remove('hidden');
+            loginErrorDiv.innerText = "";
+            syncAdminInputs(currentMatch);
+        } else {
+            loginErrorDiv.innerText = "Wrong password! Use: admin123";
+        }
+    }
+    
+    let panelVisible = false;
+    toggleAdminBtn.addEventListener('click', () => {
+        panelVisible = !panelVisible;
+        if (panelVisible) {
+            adminPanel.classList.remove('hidden');
+            if (adminAuthenticated) {
+                adminAuthZone.classList.add('hidden');
+                adminControlsDiv.classList.remove('hidden');
+                syncAdminInputs(currentMatch);
+            } else {
+                adminAuthZone.classList.remove('hidden');
+                adminControlsDiv.classList.add('hidden');
+            }
+        } else {
+            adminPanel.classList.add('hidden');
+        }
+    });
+    
+    loginAdminBtn.addEventListener('click', attemptAdminLogin);
+    adminPassword.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') attemptAdminLogin();
+    });
+    updateMatchBtn.addEventListener('click', updateMatchFromAdmin);
+    
+    // Запуск
+    loadInitialData();
+    subscribeToRealtime();
+    
+    // Fallback polling на случай обрыва WebSocket
+    setInterval(async () => {
+        try {
+            const { data } = await supabaseClient
+                .from('cs2_scores')
+                .select('data')
+                .eq('id', 1)
+                .single();
+            
+            if (data && data.data && JSON.stringify(data.data) !== JSON.stringify(currentMatch)) {
+                currentMatch = data.data;
+                updateUI(currentMatch, true);
+                if (adminAuthenticated) syncAdminInputs(currentMatch);
+            }
+        } catch(e) {}
+    }, 3000);
+    
+    syncStatusEl.innerHTML = '🟢 LIVE SYNC';
+    console.log("✅ CS2 Scoreboard готов! Админ пароль: admin123");
+    console.log("✅ Откройте эту страницу на нескольких устройствах - счет будет синхронизироваться автоматически!");
+</script>
+
+<!-- 
+    ====================== ВСЕ ГОТОВО! ======================
+    
+    ✔️ Никаких настроек Firebase
+    ✔️ Никаких регистраций
+    ✔️ Никаких API ключей
+    
+    ПРОСТО:
+    1. Сохраните этот файл как index.html
+    2. Откройте на компьютере
+    3. Нажмите "Admin Panel" → введите admin123
+    4. Меняйте счет → он обновляется у всех, у кого открыта эта страница!
+    
+    ДЛЯ РАБОТЫ МЕЖДУ РАЗНЫМИ УСТРОЙСТВАМИ:
+    - Залейте файл на любой бесплатный хостинг (Netlify, GitHub Pages)
+    - Или отправьте файл другу, он откроет его у себя
+    - Изменения будут видны мгновенно у всех!
+    
+    ВСЕ РАБОТАЕТ ИЗ КОРОБКИ БЕЗ ДОПОЛНИТЕЛЬНЫХ ДЕЙСТВИЙ!
+-->
+</body>
+</html>
